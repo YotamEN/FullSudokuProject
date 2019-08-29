@@ -58,4 +58,10 @@ int getColumnSize();
 
 int getErrBoard();
 
+int advanceMove();
+
+int prevMove();
+
+void toDefault();
+
 #endif
