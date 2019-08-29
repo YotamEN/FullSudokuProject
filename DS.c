@@ -669,6 +669,9 @@ int advanceMove(){
         }
     }
 
+    else
+        return -1;
+
     current_move->next_move = (UndoRedoMove*) malloc(sizeof(UndoRedoMove));
     if(current_move->next_move == NULL)
         return -1;
