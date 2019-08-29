@@ -58,10 +58,18 @@ int getColumnSize();
 
 int getErrBoard();
 
+int getFilledCells();
+
 int advanceMove();
 
 int prevMove();
 
 void toDefault();
+
+void saveBoard(Sudoku* board, char* file);
+
+Sudoku* loadBoard(char* file);
+
+int isFixed(Sudoku* board, int column, int row);
 
 #endif

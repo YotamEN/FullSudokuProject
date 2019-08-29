@@ -1,5 +1,13 @@
 #include "solver.h"
 
+typedef struct backtrack_stack BCStack;
+
+struct backtrack_stack{
+    int row;
+    int column;
+    struct backtrack_stack* prev;
+};
+
 
 Sudoku* solve(Sudoku* board){
     Sudoku* copy_board = copyBoard(board);
@@ -51,6 +59,89 @@ Sudoku* solveBoard(Sudoku* board, int column, int row, int isBacktrack){
 		else
 			return solveBoard(board, column+1, row, 0);
 	}
+}
+
+int exhaustiveBacktracking(Sudoku* board){
+    int solutions, row, column, value_to_set, N;
+    BCStack* head, *temp;
+
+    solutions = 0;
+    row = 1;
+    column = 1;
+    N = getRowSize() * getColumnSize();
+
+    if(board == NULL)
+        return -1;
+
+    while(row != 0){
+        /*check if cell is fixed*/
+        if(board->actual_board[row-1][column-1] != 0 || board->fixed_cells[row][column] == 1){
+            if(column == N){
+                row += 1;
+                column = 1;
+            }
+            else
+                column += 1;
+            continue;
+        }
+
+        /*Cell is empty, we can test values to input*/
+        value_to_set = get(board, column, row) + 1;
+
+        while(!isValid(board, column, row, value_to_set) && value_to_set <= N){
+            /*if the current value is valid continue to the next cell*/
+            value_to_set = value_to_set + 1;
+        }
+
+        if(value_to_set > N){ /*Backtracking required*/
+            set(board, column, row, 0); /*clear the cell*/
+
+            if(head == NULL) /*Backtrack from the first empty cell*/
+                return solutions;
+
+            row = head->row;
+            column = head->column;
+            temp = head->prev;
+            free(head);
+            head = temp;
+            continue;
+        }
+
+        else{/*value is valid, set it and proceed to the next cell.*/
+            set(board, column, row, value_to_set);
+            if(row == N && column == N){
+                solutions += 1;
+            }
+
+            else {
+                temp = (BCStack*) malloc(sizeof(BCStack));
+                if(temp == NULL){
+                    perror("Memory allocation error.\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                temp->row = row;
+                temp->column = column;
+                if(head == NULL)
+                    head = temp;
+                else{
+                    temp->prev = head;
+                    head = temp;
+                }
+
+                if(column == N){
+                    row = row+1;
+                    column = 1;
+                }
+
+                else{
+                    column += 1;
+                }
+            }
+        }
+
+
+    }
 }
 
 Sudoku* generatePuzzle(){

@@ -8,7 +8,11 @@ int mark_errors = 1;
 int row_size = 3;
 int column_size = 3;
 int err_board = 0;
-typedef struct undo_redo_move UndoMove;
+int filled_cells = 0;
+
+typedef struct undo_redo_move UndoRedoMove;
+typedef struct move Move;
+typedef struct autofill_move AutoFill;
 
 struct undo_redo_move{
     struct move* current_move;
@@ -16,7 +20,16 @@ struct undo_redo_move{
     struct undo_redo_move* prev_move;
 };
 
-typedef struct autofill_move AutoFill;
+
+struct move{
+    int row;
+    int column;
+    int from;
+    int to;
+    struct move* next;
+    struct move* prev;
+};
+
 
 struct autofill_move{
     int row;
@@ -25,8 +38,17 @@ struct autofill_move{
     struct autofill_move* next;
 };
 
-UndoMove* first_move = NULL;
-UndoMove* current_move = NULL;
+UndoRedoMove* first_move = NULL;
+UndoRedoMove* current_move = NULL;
+
+void toDefault(){
+    game_mode = 1;
+    mark_errors = 1;
+    err_board = 0;
+    filled_cells = 0;
+    first_move = NULL;
+    current_move = NULL;
+}
 
 Sudoku* createBoard(int row, int column){
     int i,j, N;
@@ -116,7 +138,7 @@ Sudoku* createBoard(int row, int column){
 		return NULL;
 	}
 
-	for( i=0; i<N; ++i){
+	for(i=0; i<N; ++i){
 		game_board->fixed_cells[i] = (int*)malloc(N * sizeof(int));
 		if(game_board->fixed_cells[i] == NULL){
 			destroyBoard(game_board);
@@ -178,8 +200,27 @@ void copyCurrentBoard(Sudoku* copyFrom, Sudoku* copyTo){
 
 }
 
+void freeMoves(UndoRedoMove* move){
+    UndoRedoMove* next;
+    Move* inner_move;
+    Move* next_inner_move;
+
+    while(move != NULL){
+        next = move->next_move;
+        inner_move = move->current_move;
+        while(inner_move != NULL){
+            next_inner_move = inner_move->next;
+            free(inner_move);
+            inner_move = next_inner_move;
+        }
+        free(move);
+        move = next;
+    }
+}
+
 int set(Sudoku* board, int column, int row, int value){
     int ret=0, current_value, blocks_in_a_row, blocks_in_a_column;
+    Move* current = current_move->current_move;
     blocks_in_a_row = row_size;
     blocks_in_a_column = column_size;
 
@@ -202,10 +243,24 @@ int set(Sudoku* board, int column, int row, int value){
 		board->columns[column-1][current_value-1] = 0;
 		board->blocks[(row-1)/blocks_in_a_row][(column-1)/blocks_in_a_column][current_value-1] = 0;
 		board->err_cells[(row-1)][(column-1)] = 0;
+		filled_cells -= 1;
 		ret--;
 	}
 
+	/*insert the new value and record the move*/
 	board->actual_board[row-1][column-1] = value;
+    current->next = (Move*) malloc(sizeof(Move));
+    if(current->next == NULL){
+        perror("Memory allocation error.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    current->row = row;
+    current->column = column;
+    current->from = current_value;
+    current->to = value;
+    current->next->prev = current;
+    current = current->next;
 
 	if(value != 0){
 		board->rows[row-1][value-1] = 1;
@@ -214,9 +269,11 @@ int set(Sudoku* board, int column, int row, int value){
 
         if(isValid(board, column, row, value) == 0){
             board->err_cells[row-1][column-1] = 1;
+            err_board += 1;
             /*return 3;*/
         }
 
+        filled_cells += 1;
 		ret++;
 	}
     return ret;
@@ -363,26 +420,36 @@ void initializeBoard(Sudoku* board){
 	}
 }
 
-/*need to define with Yotam*/
-void reverseMove(){
+void redoMove(Sudoku* board){
+   Move* current;
+   current = current_move->current_move;
+
+   while(current != NULL){
+       set(board, current->column, current->row, current->to);
+       printf("Cell at row %d, column %d changed to: %d\n", current->row, current->column, current->to);
+       current = current->next;
+   }
 
 }
 
-void addMove(){
+int undoMove(Sudoku* board){
+    Move* current;
+
+    current = current_move->current_move;
+
+    while(current != NULL){
+        set(board, current->column, current->row, current->from);
+        printf("Cell at row %d, column %d changed to: %d\n", current->row, current->column, current->from);
+        current = current->next;
+    }
+
+    return 1;
 
 }
 
-void redoMove(){
-
-}
-
-void undoMove(){
-
-}
-
-void reset(){
+void reset(Sudoku* board){
     while(current_move->prev_move != NULL)
-        undoMove();
+        undoMove(board);
 }
 
 void saveBoard(Sudoku* board, char* file){
@@ -477,11 +544,59 @@ Sudoku* loadBoard(char* file){
     return loadedBoard;
 }
 
+void freeAutoFill(AutoFill* autoFill){
+    AutoFill* next;
+    while(autoFill != NULL){
+        next = autoFill->next;
+        free(autoFill);
+        autoFill = next;
+    }
+}
 
 void autofillBoard(Sudoku* board){
+    int i, j, k, N, possible_moves, autofill_value;
+    AutoFill* autofill_moves;
+    AutoFill* curr_move;
+
+    N = row_size * column_size;
+    autofill_moves = (AutoFill*) malloc(sizeof(AutoFill));
+    curr_move = autofill_moves;
+
     if(err_board > 0)
         return;
 
+    /*create linked list of autofill moves*/
+    for(i=0; i<N; ++i){
+        for(j=0; j<N; ++j){
+            for(k=1; k<=N; ++k){
+                if(isValid(board, j, i, k)){
+                    if(possible_moves == 0)
+                        autofill_value = k;
+                    possible_moves += 1;
+                }
+            }
+
+            if(possible_moves == 1){
+                curr_move->row = i+1;
+                curr_move->column = j+1;
+                curr_move->value = autofill_value;
+                curr_move->next = (AutoFill*) malloc(sizeof(AutoFill));
+                if(curr_move->next == NULL){
+                    destroyBoard(board);
+                    freeAutoFill(autofill_moves);
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+    }
+
+    /*execute all moves*/
+    curr_move = autofill_moves;
+    while(curr_move != NULL){
+        set(board, curr_move->column, curr_move->row, curr_move->value);
+        printf("Cell in row %d, column %d changed to: %d\n", curr_move->row, curr_move->column, curr_move->value);
+        curr_move = curr_move->next;
+    }
 
 }
 /****************/
@@ -520,4 +635,43 @@ int getColumnSize(){
 
 int getErrBoard(){
     return err_board;
+}
+
+int getFilledCells(){
+    return filled_cells;
+}
+
+int advanceMove(){
+    UndoRedoMove* clearRedo;
+    UndoRedoMove* clearRedoNext;
+    /*clear next moves*/
+    if(current_move->next_move != NULL){
+        clearRedo = current_move->next_move;
+        while(clearRedo != NULL){
+            clearRedoNext = clearRedo->next_move;
+            freeMoves(clearRedo);
+            free(clearRedo);
+            clearRedo = NULL;
+            clearRedo = clearRedoNext;
+        }
+    }
+
+    current_move->next_move = (UndoRedoMove*) malloc(sizeof(UndoRedoMove));
+    if(current_move->next_move == NULL)
+        return -1;
+
+    current_move = current_move->next_move;
+    return 1;
+}
+
+int prevMove(){
+    if(current_move->prev_move == NULL)
+        return -1;
+
+    current_move = current_move->prev_move;
+    return 1;
+}
+
+int isFixed(Sudoku* board, int column, int row){
+    return board->fixed_cells[row-1][column-1];
 }

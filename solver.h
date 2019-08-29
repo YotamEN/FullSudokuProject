@@ -17,5 +17,7 @@ int* findBacktrackCell(Sudoku* board, int column, int row);
 
 Sudoku* solveRandBoard(Sudoku* board, int column, int row);
 
+int exhaustiveBacktracking(Sudoku* board);
+
 /*int* validValues(Sudoku* board, int column, int row);*/
 #endif
