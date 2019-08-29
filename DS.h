@@ -16,7 +16,7 @@ struct sudoku_board{
     int **err_cells;
 };
 
-Sudoku* createBoard(int row, int block);
+Sudoku* createBoard(int row, int column);
 
 Sudoku* copyBoard(Sudoku* board);
 
@@ -39,6 +39,18 @@ void copy2DArray(int **A, int **B, int size_of_A, int size_of_B);
 void initialize2DArray(int** arr);
 
 void initializeBoard(Sudoku* board);
+
+void redoMove(Sudoku* board);
+
+int undoMove(Sudoku* board);
+
+void reset(Sudoku* board);
+
+void saveBoard(Sudoku* board, char* file);
+
+Sudoku* loadBoard(char* file);
+
+void autofillBoard(Sudoku* board);
 
 void setGameMode(int mode);
 

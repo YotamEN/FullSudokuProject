@@ -243,6 +243,7 @@ int set(Sudoku* board, int column, int row, int value){
 		board->columns[column-1][current_value-1] = 0;
 		board->blocks[(row-1)/blocks_in_a_row][(column-1)/blocks_in_a_column][current_value-1] = 0;
 		board->err_cells[(row-1)][(column-1)] = 0;
+		err_board -= 1;
 		filled_cells -= 1;
 		ret--;
 	}
@@ -270,7 +271,6 @@ int set(Sudoku* board, int column, int row, int value){
         if(isValid(board, column, row, value) == 0){
             board->err_cells[row-1][column-1] = 1;
             err_board += 1;
-            /*return 3;*/
         }
 
         filled_cells += 1;
@@ -453,7 +453,7 @@ void reset(Sudoku* board){
 }
 
 void saveBoard(Sudoku* board, char* file){
-    File *fp;
+    FILE *fp;
     int i, j, N;
     N = row_size * column_size;
 
@@ -483,10 +483,11 @@ void saveBoard(Sudoku* board, char* file){
 }
 
 Sudoku* loadBoard(char* file){
-    File *fp;
+    FILE *fp;
     char ch;
-    int row = 1, column = 1, N, m, n, int_ch, curr_val = -1;
+    int row = 1, column = 1, N, m=0, n=0, int_ch, curr_val = -1;
     Sudoku* loadedBoard = NULL;
+    N = row_size * column_size;
 
     fp = fopen(file, "r");
     if(fp == NULL){
@@ -510,6 +511,14 @@ Sudoku* loadBoard(char* file){
             continue;
 
         if(ch == '\n'){
+            if(column < N ){
+                printf("The file contains a line which is too short");
+                return NULL;
+            }
+
+            if(curr_val > N){
+                printf("The file contains an invalid value");
+            }
             if(curr_val != -1)
                 set(loadedBoard, column, row, curr_val);
             row += 1;
@@ -530,7 +539,11 @@ Sudoku* loadBoard(char* file){
 
         else{
             int_ch = ch - 48;
-            if(int_ch >= 0 && int_ch <= 9){
+            if(int_ch < 0 || int_ch > N){
+                printf("The file contains an invalid character");
+                return NULL;
+            }
+            if(int_ch >= 0 && int_ch <= N){
                 if(curr_val == -1) {
                     column += 1;
                     curr_val = int_ch;
@@ -554,7 +567,7 @@ void freeAutoFill(AutoFill* autoFill){
 }
 
 void autofillBoard(Sudoku* board){
-    int i, j, k, N, possible_moves, autofill_value;
+    int i, j, k, N, possible_moves=0, autofill_value=0;
     AutoFill* autofill_moves;
     AutoFill* curr_move;
 

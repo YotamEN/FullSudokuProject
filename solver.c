@@ -73,9 +73,29 @@ int exhaustiveBacktracking(Sudoku* board){
     if(board == NULL)
         return -1;
 
-    while(row != 0){
+    if(getFilledCells() == N*N){
+        if(getErrBoard() == 0)
+            return 1;
+        return 0;
+    }
+
+
+    while(1){
         /*check if cell is fixed*/
         if(board->actual_board[row-1][column-1] != 0 || board->fixed_cells[row][column] == 1){
+            if(row == N && column == N){
+                solutions += 1;
+                if(head == NULL)
+                    return solutions;
+                else{
+                    temp = head->prev;
+                    row = head->row;
+                    column = head->column;
+                    free(head);
+                    head = temp;
+                    continue;
+                }
+            }
             if(column == N){
                 row += 1;
                 column = 1;
@@ -114,6 +134,7 @@ int exhaustiveBacktracking(Sudoku* board){
             }
 
             else {
+                /*Add current cell to the stack*/
                 temp = (BCStack*) malloc(sizeof(BCStack));
                 if(temp == NULL){
                     perror("Memory allocation error.\n");
@@ -129,6 +150,7 @@ int exhaustiveBacktracking(Sudoku* board){
                     head = temp;
                 }
 
+                /*Move to the next cell*/
                 if(column == N){
                     row = row+1;
                     column = 1;
