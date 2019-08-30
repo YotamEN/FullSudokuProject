@@ -4,10 +4,12 @@ int     stringToInt               (char a[])                                ;
 int     someProblem               (int count, cmd command)                  ;
 void    unknownCommandMessage     ()                                        ;
 void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
-void wrongValuesMessage(int num, int min_right, int max_right, int num_param);
+void    wrongValuesMessage        (int num, int min_right,
+                                    int max_right, int num_param)           ;
 void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
 void    initCommand               (cmd command, char* token)                ;
 int     notInRange                (int num, int min, int max)               ;
+float   stringToFloat             (char* s)                                 ;
 
 /*
  * receive command from user and call relevant function
@@ -16,7 +18,7 @@ int     notInRange                (int num, int min, int max)               ;
  */
 int get_command(Sudoku *board, Sudoku *solvedBoard) {
     /* ----- field members -----*/
-    char    comm_line[Line_Length], *token  ;
+    char    comm_line[Line_Length], *token, *s  ;
     cmd     command    ;
     int     count = 1  ;
     /* ----- process command -----*/
@@ -40,14 +42,15 @@ int get_command(Sudoku *board, Sudoku *solvedBoard) {
         if(token == NULL) break;
         count++;
         if(count==2){
+            s = token;
             if (command.name == e_edit || command.name == e_save || command.name == e_solve){
                 strcpy(command.address , token);
             }
             else if (command.name == e_guess){
-                /* TODO parse to FLOAT !! */
+                command.f = stringToFloat(s);
             }
             else
-                command.x = stringToInt(token);
+                command.x = stringToInt(s);
         }
         else if(count==3) command.y = stringToInt(token);
         else if(count==4) command.z = stringToInt(token);
@@ -131,7 +134,15 @@ int someProblem(int count, cmd command){
 
     /* commands with file path as argument*/
     if (        command.name == e_edit      || command.name == e_save   || command.name == e_solve){
-        /*TODO*/
+        if (count != 1){
+            wrongNumberOfParamsMessage(count, 1);
+            return 1;
+        }
+        if (command.name != e_edit && strncmp(command.address, "", 1)){
+            printf("Path or file name is missing, please provide one for this function to work\n");
+            return 1;
+        }
+
     }
     /* commands with no arguments */
     else if (   command.name == e_validate  || command.name == e_undo   || command.name == e_num_solutions
@@ -208,6 +219,28 @@ int someProblem(int count, cmd command){
         }
     }
     return 0;
+}
+
+float stringToFloat(char* s){
+    float rez = 0, fact = 1;
+    int point_seen, d;
+
+    if (*s == '-'){
+        s++;
+        fact = -1;
+    }
+    for (point_seen = 0; *s; s++){
+        if (*s == '.'){
+            point_seen = 1;
+            continue;
+        }
+        d = *s - '0';
+        if (d >= 0 && d <= 9){
+            if (point_seen) fact /= 10.0f;
+            rez = rez * 10.0f + (float)d;
+        }
+    }
+    return rez * fact;
 }
 
 int stringToInt(char a[]) {
