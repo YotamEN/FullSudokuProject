@@ -19,6 +19,6 @@ int main(int argc, char *argv[]){
     else {
         srand(time(NULL));
     }
-    while(game() != 2);
+    game();
     return 0;
 }

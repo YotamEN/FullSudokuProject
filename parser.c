@@ -1,60 +1,61 @@
 #include "parser.h"
-
-/*
- * recieves from user how many filled cells he wants
- *  number must be in [0,80]
- */
-int num_of_cells_to_fill(){
-    int cells;
-    while (1){
-        printf("Please enter the number of cells to fill [0-80]:\n");
-        if (scanf("%d",&cells) <= 0) {
-            if(!feof(stdin))
-                printf("Error: not a number\n");
-            EXIT_MSG1;
-            exit(1);
-        }
-
-        if(cells>=0 && cells<=80){ /*clear();*/ return cells;}
-        printf("Error: invalid number of cells to fill (should be between 0 and 80)\n");
-
-    }
-}
+/* -------- Declaration of private funcs -------- */
+int     stringToInt               (char a[])                                ;
+int     someProblem               (int count, cmd command)                  ;
+void    unknownCommandMessage     ()                                        ;
+void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
+void wrongValuesMessage(int num, int min_right, int max_right, int num_param);
+void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
+void    initCommand               (cmd command, char* token)                ;
+int     notInRange                (int num, int min, int max)               ;
 
 /*
  * receive command from user and call relevant function
  * if returns 2 -> exit!
  * if returns 3 -> retry!
  */
-int get_command(int won, Sudoku *board, int *sets, Sudoku *solvedBoard) {
+int get_command(Sudoku *board, Sudoku *solvedBoard) {
     /* ----- field members -----*/
-    char comm_line[Line_Length], *token;
-    cmd command;
-    int count=1;
+    char    comm_line[Line_Length], *token  ;
+    cmd     command    ;
+    int     count = 1  ;
     /* ----- process command -----*/
-    if (fgets(comm_line,Line_Length,stdin) == NULL){EXIT_MSG1; return 2;}
+    if (fgets(comm_line,Line_Length,stdin) == NULL){
+        EXIT_MSG1   ;
+        return 2    ;
+    }
     if((token = strtok(comm_line,delimiter)) == NULL){
-        EXIT_MSG1;
+        EXIT_MSG1   ;
+        return 1    ;
+    }
+    initCommand(command, token);
+
+    if (command.name == e_unknown){
+        unknownCommandMessage();
         return 1;
     }
-    command.name = checkCommand(token);
+
     while MoreWords{
         token = strtok(NULL,delimiter);
         if(token == NULL) break;
         count++;
         if(count==2){
-            if (command.name == e_edit || command.name == e_save){
+            if (command.name == e_edit || command.name == e_save || command.name == e_solve){
                 strcpy(command.address , token);
-                break;
+            }
+            else if (command.name == e_guess){
+                /* TODO parse to FLOAT !! */
             }
             else
-                command.x = (token[0]-48);
+                command.x = stringToInt(token);
         }
-        else if(count==3) command.y = (token[0]-48);
-        else if(count==4) { command.z = (token[0]-48); break;}
+        else if(count==3) command.y = stringToInt(token);
+        else if(count==4) command.z = stringToInt(token);
     }
-    return execute_command(command, board, won, sets, solvedBoard);
+    if (someProblem(count, command)) return 1;
+    return execute_command(command, *board, solvedBoard);
 }
+/* --------- */
 enum cmd_name checkCommand(char* command){
     if(strcmp(command, "solve")==0){
          return e_solve;
@@ -103,4 +104,160 @@ enum cmd_name checkCommand(char* command){
 void clear(){
     scanf("%*[^\n]");
     scanf("%*c");
+}
+
+/*
+ *  -------------------------------------
+ *  -----   PRIVATE     FUNCTIONS   -----
+ *  -------------------------------------
+ */
+
+void initCommand(cmd command, char* token){
+    command.name    = checkCommand(token);
+    command.address = ""                 ;
+    command.x       = -1                 ;
+    command.y       = -1                 ;
+    command.z       = -1                 ;
+    command.f       = -1.0               ;
+}
+
+/*
+ * This function is meant to check if the command given by the user is valid.
+ * If some problem occurs, the user will have to re-enter his command.
+ */
+int someProblem(int count, cmd command){
+    int N = getRowSize() * getColumnSize();
+    int free_cells = N*N - getFilledCells();
+
+    /* commands with file path as argument*/
+    if (        command.name == e_edit      || command.name == e_save   || command.name == e_solve){
+        /*TODO*/
+    }
+    /* commands with no arguments */
+    else if (   command.name == e_validate  || command.name == e_undo   || command.name == e_num_solutions
+           ||   command.name == e_redo      || command.name == e_exit   || command.name == e_autofill
+           ||   command.name == e_reset     || command.name == e_print_board ){
+        if (count > 1)  return 1;
+    }
+    /* commands with 1 argument */
+    else if (   command.name == e_mark_errors ){
+        if (count != 1){
+            wrongNumberOfParamsMessage(count, 1);
+            return 1;
+        }
+        if (notInRange(command.x, 0, 1)){
+            wrongValuesMessage(command.x, 0, 1, 1);
+            return 1;
+        }
+    }
+    else if (   command.name == e_guess ) {
+        if (count != 1){
+            wrongNumberOfParamsMessage(count, 1);
+            return 1;
+        }
+        if (command.f < 0 || command.f > 1){
+            wrongValuesMessageFloat(command.f, 0, 1);
+            return 1;
+        }
+    }
+    /* commands with 2 arguments */
+    else if (   command.name == e_guess_hint || command.name == e_hint  || command.name == e_generate){
+        if (count != 2){
+            wrongNumberOfParamsMessage(count, 2);
+            return 1;
+        }
+        if (command.name == e_generate){
+            if (notInRange(command.x, 0, free_cells)){
+                wrongValuesMessage(command.x, 0, free_cells, 1);
+                printf("(There are only %d free cells on the board\n)", free_cells);
+                return 1;
+            }
+            if (notInRange(command.y, 0, N*N)){
+                wrongValuesMessage(command.y, 0, N*N, 2);
+                return 1;
+            }
+        }
+        else {
+            if (notInRange(command.x, 1, N)) {
+                wrongValuesMessage(command.x, 1, N, 1);
+                return 1;
+            }
+            if (notInRange(command.y, 1, N)) {
+                wrongValuesMessage(command.y, 1, N, 2);
+                return 1;
+            }
+        }
+    }
+    /* commands with 3 arguments */
+    else if (   command.name == e_set ){
+        if (count != 3){
+            wrongNumberOfParamsMessage(count, 3);
+            return 1;
+        }
+        if (notInRange(command.x, 1, N)) {
+            wrongValuesMessage(command.x, 1, N, 1);
+            return 1;
+        }
+        if (notInRange(command.y, 1, N)) {
+            wrongValuesMessage(command.y, 1, N, 2);
+            return 1;
+        }
+        if (notInRange(command.z, 1, N)) {
+            wrongValuesMessage(command.z, 1, N, 3);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int stringToInt(char a[]) {
+    int c, sign, offset, n;
+
+    if (a[0] == '-') {  // Handle negative integers
+        sign = -1;
+    }
+
+    if (sign == -1) {  // Set starting position to convert
+        offset = 1;
+    }
+    else {
+        offset = 0;
+    }
+
+    n = 0;
+
+    for (c = offset; a[c] != '\0'; c++) {
+        n = n * 10 + a[c] - '0';
+    }
+
+    if (sign == -1) {
+        n = -n;
+    }
+
+    return n;
+}
+
+/*
+ *  ----------------------------------
+ *  -----   PRINT    FUNCTIONS   -----
+ *  ----------------------------------
+ */
+int notInRange(int num, int min, int max){
+    return (!(num >= min && num <= max));
+}
+void unknownCommandMessage(){
+    printf("ERROR: You have entered an unknown command. Please try again\n");
+}
+
+void wrongNumberOfParamsMessage(int wrong, int right){
+    printf("ERROR: You have entered %d parameters, the correct number of parameters for this function: %d\n",wrong,right);
+}
+
+void wrongValuesMessage(int num, int min_right, int max_right, int num_param) {
+    printf("ERROR: You have entered an illegal value: %d, to parameter number %d.\n"
+           "Please enter a value between %d and %d\n",num,num_param,min_right,max_right);
+}
+
+void wrongValuesMessageFloat(float num, int min_right, int max_right){
+    printf("ERROR: You have entered an illegal value: %f. Please enter a value between %d.0 and %d.0\n",num,min_right,max_right);
 }

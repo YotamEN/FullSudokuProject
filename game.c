@@ -1,43 +1,38 @@
 #include "game.h"
-/* ----------------------------------------
- * ------------ User Functions ----------
- * ----------------------------------------
+
+char* checkModeName(int mode_code);
+void wrongModeForFuncPrint(int mode_code, int allowed_mode_a, int allowed_mode_b);
+int checkAvailableInMode(int allowed_mode_a, int allowed_mode_b);
+
+
+/* --------------------------------------------------
+ * ------------ User and Command Functions ----------
+ * --------------------------------------------------
  */
+
 /*
- * if reached "exit" or encountered EOF, return 2
+ * if reached "exit" or encountered EOF, return
  *
  */
-int game(){
+void game(){
 
-    int win, const_cells, game_code, sets;
-    Sudoku *board, *solvedBoard;
+    int game_code;
+    Sudoku *board, *solvedBoard = NULL;
     RESTART: while(1){
-        if ((const_cells = num_of_cells_to_fill()) == -1) return 2;
-        sets=const_cells;
-        win = 0;
-        if ((solvedBoard = generatePuzzle()) == NULL){ EXIT_MSG2("generatePuzzle()"); return 2;}
-        board = fillConstCells(solvedBoard, const_cells);
-        printBoard(board);
-        while(1){
+        setGameMode(1); /* Mode is now INIT*/
 
-            game_code = get_command(win, board, &sets, solvedBoard);
+        while(1){
+            printf("Enter thy command:\n");
+            game_code = get_command(board, solvedBoard);
             switch (game_code){
-                case 0:
+                case 0: /* game over - user won */
                     WIN_MSG;
-                    win =1;
-                    break;
-                case 2:
-                    destroyPreExit(board, solvedBoard);
-                    return 2;
-                case 3:
-                    destroyPreExit(board, solvedBoard);
                     goto RESTART;
-                case 4:
-                    printBoard(board);
-                    break;
-                default:
-                    break;
+                case 2:/* exit */
+                    destroyPreExit(board, solvedBoard);
+                    return;
             }
+            if (getGameMode()!=1) printBoard(board);
         }
     }
 }
@@ -47,39 +42,73 @@ int game(){
  * else if command == 1 : "restart" return 3
  * else if command == 3 : "set" AND user wins return 0
  */
-int execute_command(cmd command, Sudoku *board, int won, int *sets, Sudoku *solvedBoard) {
+int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
     Sudoku* validatedBoard;
 
     switch(command.name){
         case e_solve:
-            /*  TODO  */
+            setGameMode(2);
+            *board = loadBoard(command.address);
+            /*1 - init;  2 - solve;  3 - edit;*/
             break;
 
         case e_edit:
-            /*  TODO  */
+            setGameMode(3);
+            *board = loadBoard(command.address);
+            /*1 - init;  2 - solve;  3 - edit;*/
             break;
 
         case e_mark_errors:
-            /*  TODO  */
+            if (checkAvailableInMode(2,0)){
+                break;
+            }
+            if (command.x != 0 && command.x != 1){
+                printf("ERROR: function accepts either 1 or 0\n");
+                break;
+            }
+            setMarkErrors(command.x);
             break;
 
         case e_print_board:
-            /*  TODO  */
+            /* board gets printed anyway...*/
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
             break;
 
         case e_set:
-            /*  TODO  */
-            /* check if game won. if yes: win = 1;*/
-            return setZtoXY(board, command, sets);
+            /*return 0 if user won*/
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            if (getGameMode() == 1 && isFixed(*board, command.x, command.y)){
+                printf("Cell (%d, %d) is fixed. Fixed cells can only be changed in edit mode.\n", command.x, command.y);
+                return 1;
+            }
+            return setZtoXY(*board, command);
 
         case e_validate:
-            validatedBoard = validateCurrentBoard(board, solvedBoard);
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            if (getErrBoard()){
+                printf("The board is erroneous - correct all errors before validating\n");
+                break;
+            }
+            /* FIXME - GUROBI*/
+            validatedBoard = validateCurrentBoard(*board, solvedBoard);
             copyCurrentBoard(validatedBoard, solvedBoard);
             /*destroyBoard(validatedBoard);*/
-            return 1;
             break;
 
         case e_guess:
+            if (checkAvailableInMode(2,0)){
+                break;
+            }
+            if (getErrBoard()){
+                printf("The board is erroneous - correct all errors before guessing\n");
+                break;
+            }
             /*  TODO  */
             break;
 
@@ -88,37 +117,100 @@ int execute_command(cmd command, Sudoku *board, int won, int *sets, Sudoku *solv
             break;
 
         case e_undo:
-            /*  TODO  */
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            if (undoMove(*board)){
+                printf("ERROR: 'undo' unavailable, already at starting point\n");
+                break;
+            }
+            prevMove();
             break;
 
         case e_redo:
-            /*  TODO  */
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            advanceMove();
+            if (redoMove(*board)){
+                printf("ERROR: 'undo' unavailable, already at starting point\n");
+                break;
+            }
             break;
 
         case e_save:
-            /*  TODO  */
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            if (getGameMode() == 2){
+                if (getErrBoard()){
+                    printf("The board is erroneous - correct all errors before saving\n");
+                    break;
+                }
+                /* TODO - validate board and if no solution - saving not allowed! remember to break;*/
+            }
+            saveBoard(*board, command.address);
             break;
 
         case e_hint:
+            if (checkAvailableInMode(2,0)){
+                break;
+            }
+            if (getErrBoard()){
+                printf("The board is erroneous - correct all errors before asking for a hint\n");
+                break;
+            }
+            if (isFixed(*board, command.x, command.y)){
+                printf("This cell is fixed! Hint: try a different cell\n");
+                break;
+            }
+            if (get(*board, command.x, command.y) != 0){
+                printf("This cell already has a value! Hint: try a different cell\n");
+                break;
+            }
+            /*FIXME - run ILP. if unsolvable - ERROR!*/
             giveHint(command.x,command.y,solvedBoard);
-            return 1;
             break;
 
         case e_guess_hint:
-            /*  TODO  */
+            if (checkAvailableInMode(2,0)){
+                break;
+            }
+            if (getErrBoard()){
+                printf("The board is erroneous - correct all errors before asking for a hint\n");
+                break;
+            }
+            if (isFixed(*board, command.x, command.y)){
+                printf("This cell is fixed! Hint: try a different cell\n");
+                break;
+            }
+            if (get(*board, command.x, command.y)){
+                printf("This cell already has a value! Hint: try a different cell\n");
+                break;
+            }
+            /*  TODO - the whole damn thing */
             break;
 
         case e_num_solutions:
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
             /*  TODO  */
             break;
 
         case e_autofill:
-            /*  TODO  */
+            if (checkAvailableInMode(2,0)){
+                break;
+            }
+            autofillBoard(*board);
             break;
 
         case e_reset:
-            /*  TODO  */
-            return 3; /* ? */
+            if (checkAvailableInMode(2,3)){
+                break;
+            }
+            reset(*board);
+            return 3;
 
         case e_exit:
             EXIT_MSG1;
@@ -126,24 +218,31 @@ int execute_command(cmd command, Sudoku *board, int won, int *sets, Sudoku *solv
 
         default:
             ERROR_MSG3;
-            return 1;
     }
+    return 1;
 
 }
+/* -----------------------------------------
+ * ------------ Feature Functions ----------
+ * -----------------------------------------
+ */
 
+/* - unnecessary code for now FIXME
 Sudoku* fillConstCells(Sudoku *board, int permCells) {
     int i,x,y;
-    Sudoku* gameBoard = createBoard(row_size,block_size);
+    Sudoku* gameBoard = createBoard(getRowSize()*getColumnSize(), getRowSize()*getColumnSize());
+
     for (i=0; i<permCells; i++){
         do {
-            x = (rand() % row_size)+1;
-            y = (rand() % row_size)+1;
+            x = (rand() % (getRowSize()*getColumnSize()))+1;
+            y = (rand() % (getRowSize()*getColumnSize()))+1;
         }while(gameBoard->fixed_cells[y-1][x-1] == 1);
         set(gameBoard,x,y,get(board,x,y));
         gameBoard->fixed_cells[y-1][x-1] = 1;
     }
     return gameBoard;
 }
+*/
 
 void destroyPreExit(Sudoku* A, Sudoku* B){
     destroyBoard(A);
@@ -152,11 +251,12 @@ void destroyPreExit(Sudoku* A, Sudoku* B){
 
 void giveHint(int x, int y, Sudoku* solvedBoard){
     int clue = get(solvedBoard,x,y);
-    HINT_MSG;
+    HINT_MSG(clue);
 }
 
 Sudoku * validateCurrentBoard(Sudoku *board, Sudoku *solvedBoard){
     Sudoku* temp = solve(board);
+
     if (temp == NULL){
         VAL_FAIL_MSG;
         return solvedBoard;
@@ -168,25 +268,67 @@ Sudoku * validateCurrentBoard(Sudoku *board, Sudoku *solvedBoard){
     }
 }
 
-int setZtoXY(Sudoku *board, cmd command, int *sets) {
-    int success = 0;
-    if(command.x == -1 || command.y == -1 || command.z == -1){
-        ERROR_MSG3;
+int setZtoXY(Sudoku *board, cmd command) {
+    int N = getColumnSize()*getRowSize();
+    int unsuccessful = 0;
+
+    unsuccessful = set(board, command.x, command.y, command.z);
+    if (unsuccessful == 1) {printf("Sudoku board is NULL - exiting...\n"); return 2;}
+    else if(unsuccessful == 2) {ERROR_MSG1; return 1;}
+    /*Check for a win:*/
+    if (getFilledCells() == (N*N)){
+        if (getErrBoard() == 0) return 0;
+        else printf("The solution is erroneous - Fix all errors to finish\n");
+    }
+    /* printf("set success = %d\n",success); */
+    return 3;
+}
+
+
+/* ---------------------------------------
+ * ------------ Private Functions ----------
+ * ---------------------------------------
+ */
+char* checkModeName(int mode_code){
+    char *mode;
+
+    switch(mode_code){
+        case(1):
+            mode = "init";
+            break;
+        case(2):
+            mode = "solve";
+            break;
+        case(3):
+            mode = "edit";
+            break;
+        default:
+            mode ="";
+    }
+    return mode;
+}
+
+
+void wrongModeForFuncPrint(int mode_code, int allowed_a, int allowed_b){
+    char *mode, *alw_mode_a, *alw_mode_b;
+
+    mode = checkModeName(mode_code);
+    alw_mode_a = checkModeName(allowed_a);
+    alw_mode_b = checkModeName(allowed_b);
+    printf("This function is not available in %s mode, only in modes: %s %s\n ", mode, alw_mode_a, alw_mode_b);
+}
+
+int checkAvailableInMode(int mode_a, int mode_b){
+    int mode = getGameMode();
+    if (mode != mode_a && mode != mode_b){
+        wrongModeForFuncPrint(mode, mode_a, mode_b);
         return 1;
     }
-
-    success = set(board, command.x, command.y, command.z);
-    if(success == 2) {ERROR_MSG1; return 1;}
-    else if(success == 3) {ERROR_MSG2; return 1;}
-    /*printf("set success = %d\n",success);*/
-    *sets += success;
-    if (*sets == row_size*row_size) return 0; /* we have a winner! */
-    return 4;
+    return 0;
 }
-/* -----------------------------------------
- * ------------ Private Functions ----------
- * -----------------------------------------
- */
+
+
+
 
 
 
