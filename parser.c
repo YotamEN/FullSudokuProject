@@ -7,7 +7,6 @@ void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
 void    wrongValuesMessage        (int num, int min_right,
                                     int max_right, int num_param)           ;
 void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
-void    initCommand               (cmd command, char* token)                ;
 int     notInRange                (int num, int min, int max)               ;
 float   stringToFloat             (char* s)                                 ;
 
@@ -16,7 +15,7 @@ float   stringToFloat             (char* s)                                 ;
  * if returns 2 -> exit!
  * if returns 3 -> retry!
  */
-int get_command(Sudoku *board, Sudoku *solvedBoard) {
+int get_command(Sudoku **board, Sudoku **solvedBoard) {
     /* ----- field members -----*/
     char    comm_line[Line_Length], *token, *s  ;
     cmd     command    ;
@@ -30,7 +29,12 @@ int get_command(Sudoku *board, Sudoku *solvedBoard) {
         EXIT_MSG1   ;
         return 1    ;
     }
-    initCommand(command, token);
+    command.name    = checkCommand(token);
+    command.address = ""                 ;
+    command.x       = -1                 ;
+    command.y       = -1                 ;
+    command.z       = -1                 ;
+    command.f       = -1.0               ;
 
     if (command.name == e_unknown){
         unknownCommandMessage();
@@ -55,8 +59,8 @@ int get_command(Sudoku *board, Sudoku *solvedBoard) {
         else if(count==3) command.y = stringToInt(token);
         else if(count==4) command.z = stringToInt(token);
     }
-    if (someProblem(count, command)) return 1;
-    return execute_command(command, &board, solvedBoard);
+    if (someProblem(count-1, command)) return 1;
+    return execute_command(command, board, solvedBoard);
 }
 /* --------- */
 enum cmd_name checkCommand(char* command){
@@ -115,18 +119,6 @@ void clear(){
  *  -------------------------------------
  */
 
-void initCommand(cmd command, char* token){
-    command.name    = checkCommand(token);
-    command.address = ""                 ;
-    command.x       = -1                 ;
-    command.y       = -1                 ;
-    command.z       = -1                 ;
-    command.f       = -1.0               ;
-
-    /*Omer test addition*/
-    printf("Command f: %f Omer test\n", command.f);
-}
-
 /*
  * This function is meant to check if the command given by the user is valid.
  * If some problem occurs, the user will have to re-enter his command.
@@ -137,7 +129,7 @@ int someProblem(int count, cmd command){
 
     /* commands with file path as argument*/
     if (        command.name == e_edit      || command.name == e_save   || command.name == e_solve){
-        if (count != 1){
+        if (count != 1 && command.name != e_edit){
             wrongNumberOfParamsMessage(count, 1);
             return 1;
         }

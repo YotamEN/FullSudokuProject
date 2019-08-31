@@ -30,7 +30,7 @@ typedef struct commands{
 
 enum cmd_name checkCommand(char* command);
 void clear();
-int get_command(Sudoku *board, Sudoku *solvedBoard);
+int get_command(Sudoku **board, Sudoku **solvedBoard);
 
 /*Omer fix*/
 #include "game.h"

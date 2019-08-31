@@ -1,7 +1,7 @@
 #include "game.h"
 
 char* checkModeName(int mode_code);
-void wrongModeForFuncPrint(int mode_code, int allowed_mode_a, int allowed_mode_b);
+void wrongModeForFuncPrint(int mode_code, int allowed_a, int allowed_b);
 int checkAvailableInMode(int allowed_mode_a, int allowed_mode_b);
 
 
@@ -17,13 +17,13 @@ int checkAvailableInMode(int allowed_mode_a, int allowed_mode_b);
 void game(){
 
     int game_code;
-    Sudoku *board = NULL, *solvedBoard = NULL; /*Omer fix*/
+    Sudoku *board = NULL, *solvedBoard = NULL;
     RESTART: while(1){
-        setGameMode(1); /* Mode is now INIT*/
+        setGameMode(INIT_MODE);
 
         while(1){
-            printf("Enter the command:\n"); /*Omer fix*/
-            game_code = get_command(board, solvedBoard);
+            printf("Enter your command:\n");
+            game_code = get_command(&board, &solvedBoard);
             switch (game_code){
                 case 0: /* game over - user won */
                     WIN_MSG;
@@ -31,8 +31,10 @@ void game(){
                 case 2:/* exit */
                     destroyPreExit(board, solvedBoard);
                     return;
+                default:
+                    ;
             }
-            if (getGameMode()!=1) printBoard(board);
+            if (getGameMode()!= INIT_MODE) printBoard(board);
         }
     }
 }
@@ -42,24 +44,29 @@ void game(){
  * else if command == 1 : "restart" return 3
  * else if command == 3 : "set" AND user wins return 0
  */
-int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
+int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
     Sudoku* validatedBoard;
 
-    switch(command.name){
+    switch(command.name) {
         case e_solve:
-            setGameMode(2);
+            setGameMode(SOLVE_MODE);
             *board = loadBoard(command.address);
-            /*1 - init;  2 - solve;  3 - edit;*/
+            *solvedBoard = loadBoard(command.address);
             break;
 
         case e_edit:
-            setGameMode(3);
-            *board = loadBoard(command.address);
-            /*1 - init;  2 - solve;  3 - edit;*/
+            setGameMode(EDIT_MODE);
+            if (command.address[0] == '\0') {
+                *board = createBoard(9,9);
+                *solvedBoard = createBoard(9,9);
+            } else{
+                *board = loadBoard(command.address);
+                *solvedBoard = loadBoard(command.address);
+            }
             break;
 
         case e_mark_errors:
-            if (checkAvailableInMode(2,0)){
+            if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
             }
             if (command.x != 0 && command.x != 1){
@@ -71,24 +78,24 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
 
         case e_print_board:
             /* board gets printed anyway...*/
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             break;
 
         case e_set:
             /*return 0 if user won*/
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
-            if (getGameMode() == 1 && isFixed(*board, command.x, command.y)){
+            if (getGameMode() == SOLVE_MODE && isFixed(*board, command.x, command.y)){
                 printf("Cell (%d, %d) is fixed. Fixed cells can only be changed in edit mode.\n", command.x, command.y);
                 return 1;
             }
             return setZtoXY(*board, command);
 
         case e_validate:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             if (getErrBoard()){
@@ -96,13 +103,13 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
                 break;
             }
             /* FIXME - GUROBI*/
-            validatedBoard = validateCurrentBoard(*board, solvedBoard);
-            copyCurrentBoard(validatedBoard, solvedBoard);
-            /*destroyBoard(validatedBoard);*/
+            validatedBoard = validateCurrentBoard(*board, *solvedBoard);
+            copyCurrentBoard(validatedBoard, *solvedBoard);
+            destroyBoard(validatedBoard);
             break;
 
         case e_guess:
-            if (checkAvailableInMode(2,0)){
+            if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
             }
             if (getErrBoard()){
@@ -113,11 +120,14 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
             break;
 
         case e_generate:
+            if (checkAvailableInMode(EDIT_MODE,0)){
+                break;
+            }
             /*  TODO  */
             break;
 
         case e_undo:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             if (undoMove(*board)){
@@ -128,21 +138,22 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
             break;
 
         case e_redo:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             /*Omer fix */
-            if (!advanceMove()){
+            if (advanceMove()){
                 printf("ERROR: 'redo' unavailable, already at ending point\n");
                 break;
             }
+            redoMove(*board);
             break;
 
         case e_save:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
-            if (getGameMode() == 2){
+            if (getGameMode() == SOLVE_MODE){
                 if (getErrBoard()){
                     printf("The board is erroneous - correct all errors before saving\n");
                     break;
@@ -153,7 +164,7 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
             break;
 
         case e_hint:
-            if (checkAvailableInMode(2,0)){
+            if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
             }
             if (getErrBoard()){
@@ -169,11 +180,11 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
                 break;
             }
             /*FIXME - run ILP. if unsolvable - ERROR!*/
-            giveHint(command.x,command.y,solvedBoard);
+            giveHint(command.x,command.y,*solvedBoard);
             break;
 
         case e_guess_hint:
-            if (checkAvailableInMode(2,0)){
+            if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
             }
             if (getErrBoard()){
@@ -192,21 +203,21 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
             break;
 
         case e_num_solutions:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             /*  TODO  */
             break;
 
         case e_autofill:
-            if (checkAvailableInMode(2,0)){
+            if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
             }
             autofillBoard(*board);
             break;
 
         case e_reset:
-            if (checkAvailableInMode(2,3)){
+            if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
             reset(*board);
@@ -293,13 +304,13 @@ char* checkModeName(int mode_code){
     char *mode;
 
     switch(mode_code){
-        case(1):
+        case(INIT_MODE):
             mode = "init";
             break;
-        case(2):
+        case(SOLVE_MODE):
             mode = "solve";
             break;
-        case(3):
+        case(EDIT_MODE):
             mode = "edit";
             break;
         default:
