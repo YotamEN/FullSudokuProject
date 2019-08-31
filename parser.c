@@ -56,7 +56,7 @@ int get_command(Sudoku *board, Sudoku *solvedBoard) {
         else if(count==4) command.z = stringToInt(token);
     }
     if (someProblem(count, command)) return 1;
-    return execute_command(command, *board, solvedBoard);
+    return execute_command(command, &board, solvedBoard);
 }
 /* --------- */
 enum cmd_name checkCommand(char* command){
@@ -122,6 +122,9 @@ void initCommand(cmd command, char* token){
     command.y       = -1                 ;
     command.z       = -1                 ;
     command.f       = -1.0               ;
+
+    /*Omer test addition*/
+    printf("Command f: %f Omer test\n", command.f);
 }
 
 /*
@@ -245,12 +248,13 @@ float stringToFloat(char* s){
 
 int stringToInt(char a[]) {
     int c, sign, offset, n;
+    sign = 0;
 
-    if (a[0] == '-') {  // Handle negative integers
+    if (a[0] == '-') {  /* Handle negative integers */
         sign = -1;
     }
 
-    if (sign == -1) {  // Set starting position to convert
+    if (sign == -1) {  /* Set starting position to convert */
         offset = 1;
     }
     else {

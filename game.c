@@ -17,12 +17,12 @@ int checkAvailableInMode(int allowed_mode_a, int allowed_mode_b);
 void game(){
 
     int game_code;
-    Sudoku *board, *solvedBoard = NULL;
+    Sudoku *board = NULL, *solvedBoard = NULL; /*Omer fix*/
     RESTART: while(1){
         setGameMode(1); /* Mode is now INIT*/
 
         while(1){
-            printf("Enter thy command:\n");
+            printf("Enter the command:\n"); /*Omer fix*/
             game_code = get_command(board, solvedBoard);
             switch (game_code){
                 case 0: /* game over - user won */
@@ -131,9 +131,9 @@ int execute_command(cmd command, Sudoku **board, Sudoku *solvedBoard) {
             if (checkAvailableInMode(2,3)){
                 break;
             }
-            advanceMove();
-            if (redoMove(*board)){
-                printf("ERROR: 'undo' unavailable, already at starting point\n");
+            /*Omer fix */
+            if (!advanceMove()){
+                printf("ERROR: 'redo' unavailable, already at ending point\n");
                 break;
             }
             break;

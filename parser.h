@@ -11,7 +11,6 @@
 #define HINT_MSG(clue) printf("Hint: set cell to %d\n",clue)
 #define VAL_FAIL_MSG printf("Validation failed: board is unsolvable\n")
 #define VAL_PASS_MSG printf("Validation passed: board is solvable\n")
-#include "game.h"
 #include "DS.h"
 
 #include <stdio.h>
@@ -33,4 +32,6 @@ enum cmd_name checkCommand(char* command);
 void clear();
 int get_command(Sudoku *board, Sudoku *solvedBoard);
 
+/*Omer fix*/
+#include "game.h"
 #endif
