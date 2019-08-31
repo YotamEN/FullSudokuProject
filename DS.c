@@ -232,7 +232,7 @@ int set(Sudoku* board, int column, int row, int value){
      */
 
 	if(board==NULL)
-		return 0;
+		return 1;
 	if(board->fixed_cells[row-1][column-1] == 1){
 		return 2;
 	}
@@ -420,30 +420,41 @@ void initializeBoard(Sudoku* board){
 	}
 }
 
-void redoMove(Sudoku* board){
+int redoMove(Sudoku* board){
    Move* current;
+   int valid;
    current = current_move->current_move;
+   valid = 0;
 
    while(current != NULL){
-       set(board, current->column, current->row, current->to);
+       valid = set(board, current->column, current->row, current->to);
+       if(valid)
+           return -1;
        printf("Cell at row %d, column %d changed to: %d\n", current->row, current->column, current->to);
        current = current->next;
    }
+
+   return 0;
 
 }
 
 int undoMove(Sudoku* board){
     Move* current;
+    int valid;
+
+    valid = 0;
 
     current = current_move->current_move;
 
     while(current != NULL){
-        set(board, current->column, current->row, current->from);
+        valid = set(board, current->column, current->row, current->from);
+        if(valid)
+            return -1;
         printf("Cell at row %d, column %d changed to: %d\n", current->row, current->column, current->from);
         current = current->next;
     }
 
-    return 1;
+    return 0;
 
 }
 
@@ -677,7 +688,7 @@ int advanceMove(){
         return -1;
 
     current_move = current_move->next_move;
-    return 1;
+    return 0;
 }
 
 int prevMove(){
@@ -685,7 +696,7 @@ int prevMove(){
         return -1;
 
     current_move = current_move->prev_move;
-    return 1;
+    return 0;
 }
 
 int isFixed(Sudoku* board, int column, int row){

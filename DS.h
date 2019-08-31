@@ -40,7 +40,7 @@ void initialize2DArray(int** arr);
 
 void initializeBoard(Sudoku* board);
 
-void redoMove(Sudoku* board);
+int redoMove(Sudoku* board);
 
 int undoMove(Sudoku* board);
 
