@@ -7,7 +7,6 @@ void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
 void    wrongValuesMessage        (int num, int min_right,
                                     int max_right, int num_param)           ;
 void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
-int     notInRange                (int num, int min, int max)               ;
 float   stringToFloat             (char* s)                                 ;
 
 /*
@@ -133,7 +132,7 @@ int someProblem(int count, cmd command){
             wrongNumberOfParamsMessage(count, 1);
             return 1;
         }
-        if (command.name != e_edit && strncmp(command.address, "", 1)){
+        if (command.name != e_edit && command.address[0] == '\0'){
             printf("Path or file name is missing, please provide one for this function to work\n");
             return 1;
         }
@@ -208,8 +207,8 @@ int someProblem(int count, cmd command){
             wrongValuesMessage(command.y, 1, N, 2);
             return 1;
         }
-        if (notInRange(command.z, 1, N)) {
-            wrongValuesMessage(command.z, 1, N, 3);
+        if (notInRange(command.z, 0, N)) {
+            wrongValuesMessage(command.z, 0, N, 3);
             return 1;
         }
     }

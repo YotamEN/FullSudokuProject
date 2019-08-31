@@ -5,6 +5,9 @@
 #define INIT_MODE 1
 #define EDIT_MODE 2
 #define SOLVE_MODE 3
+#define ILP 1
+#define LP 0
+#define BigNumber N*2000
 #include "parser.h"
 #include "DS.h"
 #include "solver.h"

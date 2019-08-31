@@ -3,6 +3,8 @@
 char* checkModeName(int mode_code);
 void wrongModeForFuncPrint(int mode_code, int allowed_a, int allowed_b);
 int checkAvailableInMode(int allowed_mode_a, int allowed_mode_b);
+int checkIfContains(int* array, int num, int size);
+int fillRandX(Sudoku* board, int x);
 
 
 /* --------------------------------------------------
@@ -45,8 +47,9 @@ void game(){
  * else if command == 3 : "set" AND user wins return 0
  */
 int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
-    Sudoku* validatedBoard;
-
+    Sudoku *tempBoard;
+    int solvable, freecells, i;
+    int N = getColumnSize()*getRowSize();
     switch(command.name) {
         case e_solve:
             setGameMode(SOLVE_MODE);
@@ -57,8 +60,8 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
         case e_edit:
             setGameMode(EDIT_MODE);
             if (command.address[0] == '\0') {
-                *board = createBoard(9,9);
-                *solvedBoard = createBoard(9,9);
+                *board       = createBoard(3,3);
+                *solvedBoard = createBoard(3,3);
             } else{
                 *board = loadBoard(command.address);
                 *solvedBoard = loadBoard(command.address);
@@ -102,10 +105,9 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
                 printf("The board is erroneous - correct all errors before validating\n");
                 break;
             }
-            /* FIXME - GUROBI*/
-            validatedBoard = validateCurrentBoard(*board, *solvedBoard);
-            copyCurrentBoard(validatedBoard, *solvedBoard);
-            destroyBoard(validatedBoard);
+            solvable = Gurobi_solution(*board, *solvedBoard, ILP, 0, e_validate);
+            if(solvable) printf("Board is solvable - keep going!\n");
+            else printf("Board unsolvable!\n");
             break;
 
         case e_guess:
@@ -116,14 +118,34 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
                 printf("The board is erroneous - correct all errors before guessing\n");
                 break;
             }
-            /*  TODO  */
+            Gurobi_solution(*board, *solvedBoard, LP, command.f, e_guess);
             break;
 
         case e_generate:
             if (checkAvailableInMode(EDIT_MODE,0)){
                 break;
             }
-            /*  TODO  */
+            freecells = N*N - getFilledCells();
+            if (freecells < command.x){
+                printf("ERROR: There are only %d free cells on the board\n", freecells);
+                break;
+            }
+            copyCurrentBoard(*board, *solvedBoard);
+            tempBoard = createBoard(getRowSize(), getColumnSize());
+            for(i=0; i<1000; i++) {
+                copyCurrentBoard(*solvedBoard, tempBoard);
+                if (fillRandX(tempBoard, command.x)) {
+                    continue;
+                }
+                if(Gurobi_solution(*board, *solvedBoard, ILP, 0, e_generate))
+                    continue;
+                leaveYCells(*solvedBoard, command.y);
+                copyCurrentBoard(*solvedBoard, *board);
+                destroyBoard(tempBoard);
+                break;
+            }
+            printf("ERROR: Generation has failed.\n");
+            destroyBoard(tempBoard);
             break;
 
         case e_undo:
@@ -153,12 +175,15 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
             if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
-            if (getGameMode() == SOLVE_MODE){
+            if (getGameMode() == EDIT_MODE){
                 if (getErrBoard()){
-                    printf("The board is erroneous - correct all errors before saving\n");
+                    printf("The board is erroneous - correct all errors before saving in 'edit' mode\n");
                     break;
                 }
-                /* TODO - validate board and if no solution - saving not allowed! remember to break;*/
+                if (Gurobi_solution(*board, *solvedBoard, ILP, 0, e_validate)){
+                    printf("The board is unsolvable - fix it to save the board properly in 'edit' mode\n");
+                    break;
+                }
             }
             saveBoard(*board, command.address);
             break;
@@ -168,18 +193,21 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
                 break;
             }
             if (getErrBoard()){
-                printf("The board is erroneous - correct all errors before asking for a hint\n");
+                printf("ERROR: The board is erroneous - correct all errors before asking for a hint\n");
                 break;
             }
             if (isFixed(*board, command.x, command.y)){
-                printf("This cell is fixed! Hint: try a different cell\n");
+                printf("ERROR: This cell is fixed! Hint: try a different cell\n");
                 break;
             }
             if (get(*board, command.x, command.y) != 0){
-                printf("This cell already has a value! Hint: try a different cell\n");
+                printf("ERROR: This cell already has a value! Hint: try a different cell\n");
                 break;
             }
-            /*FIXME - run ILP. if unsolvable - ERROR!*/
+            if (Gurobi_solution(*board, *solvedBoard, ILP, 0, e_hint)){
+                printf("ERROR: The board is unsolvable! Hint: fix the board\n");
+                break;
+            }
             giveHint(command.x,command.y,*solvedBoard);
             break;
 
@@ -188,27 +216,28 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
                 break;
             }
             if (getErrBoard()){
-                printf("The board is erroneous - correct all errors before asking for a hint\n");
+                printf("ERROR: The board is erroneous - correct all errors before asking for a hint\n");
                 break;
             }
             if (isFixed(*board, command.x, command.y)){
-                printf("This cell is fixed! Hint: try a different cell\n");
+                printf("ERROR: This cell is fixed! Hint: try a different cell\n");
                 break;
             }
             if (get(*board, command.x, command.y)){
-                printf("This cell already has a value! Hint: try a different cell\n");
+                printf("ERROR: This cell already has a value! Hint: try a different cell\n");
                 break;
             }
-            /*  TODO - the whole damn thing */
+            if (Gurobi_solution(*board, *solvedBoard, LP, 0, e_guess_hint)){
+                printf("ERROR: The board is unsolvable! Hint: fix the board\n");
+                break;
+            }
             break;
 
         case e_num_solutions:
             if (checkAvailableInMode(SOLVE_MODE, EDIT_MODE)){
                 break;
             }
-            /*  TODO  */
-            break;
-
+            printf("The number of possible solutions is: %d\n", exhaustiveBacktracking(*board));
         case e_autofill:
             if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
@@ -334,6 +363,48 @@ int checkAvailableInMode(int mode_a, int mode_b){
     if (mode != mode_a && mode != mode_b){
         wrongModeForFuncPrint(mode, mode_a, mode_b);
         return 1;
+    }
+    return 0;
+}
+
+int fillRandX(Sudoku* board, int x){
+    int i,j,rndX, rndY, N=getColumnSize()*getRowSize();
+    int found=0, count=0;
+    int* taken = (int*) malloc(2*x*sizeof(int));
+    int* frees = (int*) malloc(2*x*sizeof(int));
+    for (i=0; i<x; i++){
+        do {
+            rndX = rand() % N;
+            rndY = rand() % N;
+            count++;
+            if(count == BigNumber){
+                printf("ERROR: Couldn't find an empty cell\n");
+                return 1;
+            }
+        } while(get(board, rndX, rndY) != 0);
+        for (j=0; j<N; j++){
+            if (isValid(board, rndX, rndY, j)){
+                set(board, rndX, rndY, j);
+                found = 1;
+                break;
+            }
+        }
+        if(!found) return 1;
+    }
+
+    free(frees);
+    free(taken);
+    return 0;
+}
+
+int leaveYCells(*Sudoku board, int y){
+
+}
+
+int checkIfContains(int* array, int num, int size){
+    int i;
+    for (i=0; i<size, i++){
+        if (array[i] == num) return 1;
     }
     return 0;
 }
