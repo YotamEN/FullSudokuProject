@@ -219,7 +219,7 @@ void freeMoves(UndoRedoMove* move){
 }
 
 int set(Sudoku* board, int column, int row, int value){
-    int ret=0, current_value, blocks_in_a_row, blocks_in_a_column;
+    int current_value, blocks_in_a_row, blocks_in_a_column;
     Move* current = current_move->current_move;
     blocks_in_a_row = row_size;
     blocks_in_a_column = column_size;
@@ -245,7 +245,6 @@ int set(Sudoku* board, int column, int row, int value){
 		board->err_cells[(row-1)][(column-1)] = 0;
 		err_board -= 1;
 		filled_cells -= 1;
-		ret--;
 	}
 
 	/*insert the new value and record the move*/
@@ -274,9 +273,8 @@ int set(Sudoku* board, int column, int row, int value){
         }
 
         filled_cells += 1;
-		ret++;
 	}
-    return ret;
+    return 0;
 }
 
 int get(Sudoku* board, int column, int row){
