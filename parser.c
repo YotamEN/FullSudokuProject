@@ -7,6 +7,7 @@ void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
 void    wrongValuesMessage        (int num, int min_right,
                                     int max_right, int num_param)           ;
 void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
+int     notInRange                (int num, int min, int max)               ;
 float   stringToFloat             (char* s)                                 ;
 
 /*
@@ -46,7 +47,9 @@ int get_command(Sudoku **board, Sudoku **solvedBoard) {
         count++;
         if(count==2){
             s = token;
+
             if (command.name == e_edit || command.name == e_save || command.name == e_solve){
+                command.address = malloc(sizeof(char)*sizeof(token));
                 strcpy(command.address , token);
             }
             else if (command.name == e_guess){

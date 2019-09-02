@@ -19,5 +19,7 @@ Sudoku* solveRandBoard(Sudoku* board, int column, int row);
 
 int exhaustiveBacktracking(Sudoku* board);
 
+void makeFixed(Sudoku* board);
+
 /*int* validValues(Sudoku* board, int column, int row);*/
 #endif

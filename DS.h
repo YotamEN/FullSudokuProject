@@ -16,6 +16,34 @@ struct sudoku_board{
     int **err_cells;
 };
 
+typedef struct undo_redo_move UndoRedoMove;
+typedef struct move Move;
+typedef struct autofill_move AutoFill;
+
+struct undo_redo_move{
+    struct move* current_move;
+    struct undo_redo_move* next_move;
+    struct undo_redo_move* prev_move;
+};
+
+
+struct move{
+    int row;
+    int column;
+    int from;
+    int to;
+    struct move* next;
+    struct move* prev;
+};
+
+
+struct autofill_move{
+    int row;
+    int column;
+    int value;
+    struct autofill_move* next;
+};
+
 Sudoku* createBoard(int row, int column);
 
 Sudoku* copyBoard(Sudoku* board);
@@ -26,7 +54,9 @@ void destroyBoard(Sudoku* board);
 
 void printBoard(Sudoku* board);
 
-int set(Sudoku *board, int column, int row, int value);
+void freeMoves(UndoRedoMove* move);
+
+int set(Sudoku *board, int column, int row, int value, int isMove);
 
 int get(Sudoku* board, int column, int row);
 
@@ -76,6 +106,8 @@ int advanceMove();
 
 int prevMove();
 
+int nextMove();
+
 void toDefault();
 
 void saveBoard(Sudoku* board, char* file);
@@ -84,4 +116,9 @@ Sudoku* loadBoard(char* file);
 
 int isFixed(Sudoku* board, int column, int row);
 
+void initializeInnerMove(Move* move);
+
+void initializeMove(UndoRedoMove* move);
+
+UndoRedoMove* getFirstMove();
 #endif

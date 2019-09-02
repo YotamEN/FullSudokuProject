@@ -28,10 +28,9 @@ typedef struct commands{
     float           f           ;
 } cmd;
 
-enum cmd_name   checkCommand(char* command)                       ;
-void            clear       ()                                    ;
-int             get_command (Sudoku **board, Sudoku **solvedBoard);
-int             notInRange  (int num, int min, int max)           ;
+enum cmd_name checkCommand(char* command);
+void clear();
+int get_command(Sudoku **board, Sudoku **solvedBoard);
 
 /*Omer fix*/
 #include "game.h"

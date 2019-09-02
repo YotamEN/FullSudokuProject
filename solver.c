@@ -35,7 +35,7 @@ Sudoku* solveBoard(Sudoku* board, int column, int row, int isBacktrack){
 
 	if(isBacktrack){
         value_to_set = get(board,column,row) + 1;
-        set(board, column, row, 0);
+        set(board, column, row, 0, 0);
 	}
 
 	while(!isValid(board, column, row, value_to_set) && value_to_set <= 9){
@@ -43,7 +43,7 @@ Sudoku* solveBoard(Sudoku* board, int column, int row, int isBacktrack){
 		value_to_set = value_to_set + 1;
 	}
 	if(value_to_set > 9){ /*Backtracking required*/
-		set(board, column, row, 0); /*clear the cell*/
+		set(board, column, row, 0, 0); /*clear the cell*/
 		backtrack_cell = findBacktrackCell(board, column, row);
 		if(backtrack_cell == NULL)
 			return NULL;
@@ -51,7 +51,7 @@ Sudoku* solveBoard(Sudoku* board, int column, int row, int isBacktrack){
 	}
 
 	else{/*value is valid, set it and proceed to next cell. Else, stay at the same cell.*/
-		set(board, column, row, value_to_set);
+		set(board, column, row, value_to_set, 0);
 		if(row == 9 && column == 9)
 			return board;
 		if(column == 9)
@@ -69,6 +69,9 @@ int exhaustiveBacktracking(Sudoku* board){
     row = 1;
     column = 1;
     N = getRowSize() * getColumnSize();
+    head = NULL;
+
+    makeFixed(board); /*turn all of the existing cells to fixed for the algorithm*/
 
     if(board == NULL)
         return -1;
@@ -79,12 +82,12 @@ int exhaustiveBacktracking(Sudoku* board){
         return 0;
     }
 
-
     while(1){
         /*check if cell is fixed*/
-        if(board->actual_board[row-1][column-1] != 0 || board->fixed_cells[row][column] == 1){
+        if(board->fixed_cells[row-1][column-1] == 1){/*if the cell can't be modified*/
             if(row == N && column == N){
-                solutions += 1;
+                if(board->fixed_cells[row-1][column-1] == 1)
+                    solutions += 1;
                 if(head == NULL)
                     return solutions;
                 else{
@@ -114,7 +117,7 @@ int exhaustiveBacktracking(Sudoku* board){
         }
 
         if(value_to_set > N){ /*Backtracking required*/
-            set(board, column, row, 0); /*clear the cell*/
+            set(board, column, row, 0, 0); /*clear the cell*/
 
             if(head == NULL) /*Backtrack from the first empty cell*/
                 return solutions;
@@ -128,7 +131,7 @@ int exhaustiveBacktracking(Sudoku* board){
         }
 
         else{/*value is valid, set it and proceed to the next cell.*/
-            set(board, column, row, value_to_set);
+            set(board, column, row, value_to_set, 0);
             if(row == N && column == N){
                 solutions += 1;
             }
@@ -143,6 +146,7 @@ int exhaustiveBacktracking(Sudoku* board){
 
                 temp->row = row;
                 temp->column = column;
+                temp->prev = NULL;
                 if(head == NULL)
                     head = temp;
                 else{
@@ -233,12 +237,12 @@ Sudoku* solveRandBoard(Sudoku* board, int column, int row){
 		else if(index > 1)
 			value_to_set = values_to_rand[rand()%(index)];
 		else if(index == 0){
-			set(board, column, row, 0);
+			set(board, column, row, 0, 0);
 			free(values_to_rand);
 			return NULL;
 		}
 
-		set(board, column, row, value_to_set);
+		set(board, column, row, value_to_set, 0);
 		if(row == 9 && column == 9)
 			return board;
 		if(column == 9)
@@ -279,4 +283,15 @@ int* findBacktrackCell(Sudoku* board, int column, int row){
 	}
 
 	return NULL;
+}
+
+void makeFixed(Sudoku* board){
+    int i, j, N;
+    N = getRowSize()*getColumnSize();
+    for(i=0;i<N;++i){
+        for(j=0;j<N;++j){
+            if(board->actual_board[i][j])
+                board->fixed_cells[i][j] = 1;
+        }
+    }
 }
