@@ -233,9 +233,13 @@ int set(Sudoku* board, int column, int row, int value, int isMove){
 		board->rows[row-1][current_value-1] -= 1;
 		board->columns[column-1][current_value-1] -= 1;
 		board->blocks[(column-1)/blocks_in_a_column][(row-1)/blocks_in_a_row][current_value-1] -= 1;
-		board->err_cells[(row-1)][(column-1)] = 0;
-		err_board -= 1;
-		filled_cells -= 1;
+        filled_cells -= 1;
+
+		if(board->err_cells[row-1][column-1]){
+            board->err_cells[(row-1)][(column-1)] = 0;
+            err_board -= 1;
+		}
+
 	}
 
 	/*insert the new value and record the move*/
