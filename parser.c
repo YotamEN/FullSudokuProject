@@ -7,7 +7,6 @@ void    wrongNumberOfParamsMessage(int wrong, int right)                    ;
 void    wrongValuesMessage        (int num, int min_right,
                                     int max_right, int num_param)           ;
 void    wrongValuesMessageFloat   (float num, int min_right, int max_right) ;
-int     notInRange                (int num, int min, int max)               ;
 float   stringToFloat             (char* s)                                 ;
 
 /*
@@ -47,9 +46,8 @@ int get_command(Sudoku **board, Sudoku **solvedBoard) {
         count++;
         if(count==2){
             s = token;
-
             if (command.name == e_edit || command.name == e_save || command.name == e_solve){
-                command.address = malloc(sizeof(char)*sizeof(token));
+                command.address = malloc(sizeof(char)*strlen(token));
                 strcpy(command.address , token);
             }
             else if (command.name == e_guess){
@@ -109,11 +107,6 @@ enum cmd_name checkCommand(char* command){
     }
     else return e_unknown;
 }
-/* clear upto newline */
-void clear(){
-    scanf("%*[^\n]");
-    scanf("%*c");
-}
 
 /*
  *  -------------------------------------
@@ -149,8 +142,9 @@ int someProblem(int count, cmd command){
     }
     /* commands with 1 argument */
     else if (   command.name == e_mark_errors ){
-        if (count != 1){
+        if (count > 1){
             wrongNumberOfParamsMessage(count, 1);
+	    printf("(You could also enter 0 parameters and flip the current state)\n");
             return 1;
         }
         if (notInRange(command.x, 0, 1)){
