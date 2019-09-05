@@ -144,7 +144,7 @@ int someProblem(int count, cmd command){
     else if (   command.name == e_mark_errors ){
         if (count > 1){
             wrongNumberOfParamsMessage(count, 1);
-	    printf("(You could also enter 0 parameters and flip the current state)\n");
+	    printf("You could also enter without parameters and flip the current state.\n");
             return 1;
         }
         if (notInRange(command.x, 0, 1)){
@@ -171,7 +171,7 @@ int someProblem(int count, cmd command){
         if (command.name == e_generate){
             if (notInRange(command.x, 0, free_cells)){
                 wrongValuesMessage(command.x, 0, free_cells, 1);
-                printf("(There are only %d free cells on the board\n)", free_cells);
+                printf("There are only %d free cells on the board\n", free_cells);
                 return 1;
             }
             if (notInRange(command.y, 0, N*N)){

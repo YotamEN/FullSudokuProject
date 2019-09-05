@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "game.h"
-#include "DS.h"
-#include "solver.h"
-#include "parser.h"
+
 
 int main(int argc, char *argv[]){
     int seed = 0;

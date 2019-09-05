@@ -268,6 +268,7 @@ int execute_command(cmd command, Sudoku **board, Sudoku **solvedBoard) {
                 break;
             }
             printf("The number of possible solutions is: %d\n", exhaustiveBacktracking(*board));
+            break;
         case e_autofill:
             if (checkAvailableInMode(SOLVE_MODE,0)){
                 break;
@@ -422,7 +423,7 @@ int fillRandX(Sudoku* board, int x){
 int leaveYCells(Sudoku* board, int y){
     int rndX, rndY, N=getColumnSize()*getRowSize();
     int i, count;
-    for (i=0; i<y; i++){
+    for (i=0; i<(N-y); i++){
         count =0;
         do {
             rndX = (rand() % N)+1;

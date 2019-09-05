@@ -15,7 +15,7 @@ DS.o: DS.c DS.h
 solver.o: solver.c solver.h DS.h
 	$(CC) $(COMP_FLAG) -c $*.c
 parser.o: parser.c parser.h DS.h
-	$(CC) $(COMP_FLAG) -c $*.c
+	$(CC) $(COMP_FLAG) $(GUROBI_COMP) -c $*.c
 GRB.o: GRB.c GRB.h DS.h parser.h 
 	$(CC) $(COMP_FLAG) $(GUROBI_COMP) -c $*.c
 game.o: game.c game.h parser.h DS.h solver.h GRB.h
